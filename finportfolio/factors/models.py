@@ -256,6 +256,7 @@ def factor_exposure_report(returns: pd.DataFrame, ff_factors: pd.DataFrame) -> p
         ValueError: If returns has no asset columns.
         ValueError: If ff_factors is missing required columns.
         ValueError: If any asset has insufficient overlapping observations with ff_factors.
+        Warning: If the model cannot be estimated for an asset, a warning is issued and an empty Series is returned for that asset.
     """
     if not isinstance(returns, pd.DataFrame):
         raise TypeError("returns must be a pandas DataFrame.")

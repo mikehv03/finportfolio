@@ -11,6 +11,7 @@ Classes:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import warnings
 
 class Markowitz:
     """
@@ -22,7 +23,12 @@ class Markowitz:
         periods_per_year (int): Number of periods per year for annualization. Defaults to 252.
 
     Raises:
-        ValueError: If the covariance matrix is ill-conditioned.
+        TypeError: If returns is not a pandas DataFrame.
+        ValueError: If returns is empty.
+        TypeError: If annualize is not a bool.
+        ValueError: If periods_per_year is not a positive integer.
+        ValueError: If the covariance matrix is not positive semi-definite.
+        Warnings: If the covariance matrix is ill-conditioned.
         ValueError: If the covariance matrix is singular (not invertible).
 
     Example:
@@ -31,23 +37,38 @@ class Markowitz:
         >>> m.optimal_portfolio(return_target=0.1)
         >>> m.plot_frontier(minimum_return=0.05, maximum_return=0.15)
     """
+
     def __init__(self, returns: pd.DataFrame, annualize: bool = False, periods_per_year: int = 252):
+        if not isinstance(returns, pd.DataFrame):
+            raise TypeError("returns must be a pandas DataFrame.")
+        if returns.empty:
+            raise ValueError("returns cannot be empty.")
+        if not isinstance(annualize, bool):
+            raise TypeError("annualize must be a bool.")
+        if not isinstance(periods_per_year, int) or periods_per_year <= 0:
+            raise ValueError("periods_per_year must be a positive integer.")
+        
         self.returns = returns
+
         if annualize:
-            self.expected_returns = returns.mean() * periods_per_year
-            self.cov_matrix = returns.cov() * periods_per_year
+            self.expected_returns = self.returns.mean() * periods_per_year
+            self.cov_matrix = self.returns.cov() * periods_per_year
         else:
-            self.expected_returns = returns.mean()
-            self.cov_matrix = returns.cov()
-        self.n_assets = returns.shape[1]
-        self.tickers = returns.columns.tolist()
+            self.expected_returns = self.returns.mean()
+            self.cov_matrix = self.returns.cov()
+
+        self.n_assets = self.returns.shape[1]
+        self.tickers = self.returns.columns.tolist()
         self.ones = np.ones(self.n_assets)
         self.annualize = annualize
         self.periods_per_year = periods_per_year
 
+        eigvals = np.linalg.eigvals(self.cov_matrix.values)
+        if np.any(eigvals < -1e-10):
+            raise ValueError("Covariance matrix is not positive semi-definite.")
         cond_number = np.linalg.cond(self.cov_matrix.values)
         if cond_number > 1e10:
-            raise ValueError("Covariance matrix is ill-conditioned.")
+            warnings.warn("Covariance matrix is ill-conditioned.")
         try:
             self.inv_cov = np.linalg.inv(self.cov_matrix.values)
         except np.linalg.LinAlgError:
@@ -55,42 +76,48 @@ class Markowitz:
     
     def min_variance(self) -> pd.Series:
         """
-        Calculate the minimum variance portfolio weights. 
+        Calculate the global minimum variance portfolio weights. 
 
         Returns:
-            pd.Series: Minimum variance portfolio weights
+            pd.Series: Global minimum variance portfolio weights
         
         Raises:
             ValueError: If the minimum variance portfolio is degenerate for the given inputs.
         """
         e = self.ones
-        denom = e.T @ self.inv_cov @ e
+        denom = float(e.T @ self.inv_cov @ e)
+
         if np.isclose(denom, 0.0):
             raise ValueError("Minimum variance portfolio is degenerate for the given inputs.")
-        w = (self.inv_cov @ e) / (e.T @ self.inv_cov @ e)
+        
+        w = (self.inv_cov @ e) / denom
         return pd.Series(w, index=self.tickers)
     
-    def optimal_portfolio(self, return_target: float) -> pd.Series:
+    def optimal_portfolio(self, return_target: float | int | np.floating) -> pd.Series:
         """
         Calculate the optimal portfolio weights for a given target return.
 
         Args:
-            return_target (float): The target return for the portfolio. Must be in the same frequency as the expected returns (e.g., annualized if expected returns are annualized).
+            return_target (float | int | np.floating): The target return for the portfolio. Must be in the same frequency as the expected returns (e.g., annualized if expected returns are annualized).
 
         Returns: 
             pd.Series: Optimal portfolio weights
         
         Raises:
+            TypeError: If return_target is not a float.
             ValueError: If the efficient frontier is degenerate for the given inputs (i.e., if the denominator in the weight calculation is close to zero).
         """
+        if not isinstance(return_target, (float, int, np.floating)):
+            raise TypeError("return_target is not numeric.")
+
         mu = self.expected_returns.values
         e = self.ones
 
-        A = e.T @ self.inv_cov @ e
-        B = e.T @ self.inv_cov @ mu
-        C = mu.T @ self.inv_cov @ mu
+        A = float(e.T @ self.inv_cov @ e)
+        B = float(e.T @ self.inv_cov @ mu)
+        C = float(mu.T @ self.inv_cov @ mu)
 
-        denom = A*C - B**2
+        denom = A * C - B ** 2
         if np.isclose(denom, 0.0):
             raise ValueError("Efficient frontier is degenerate for the given inputs.")
         w = self.inv_cov @ (((C - B * return_target) / denom) * e + ((A * return_target - B) / denom) * mu)
@@ -98,7 +125,7 @@ class Markowitz:
     
     def portfolio_performance(self, weights: pd.Series, rf: float = 0.0) -> pd.Series:
         """
-        Calculate the expected return, risk and Sharpe ratio of a portfolio given its weights.
+        Calculate the expected return, risk (standard deviation) and Sharpe ratio of a portfolio given its weights.
         
         Args:
             weights (pd.Series): The portfolio weights.
@@ -108,18 +135,25 @@ class Markowitz:
             pd.Series: A Series containing the expected return, risk and Sharpe ratio of the portfolio.
 
         Raises:
+            TypeError: If weights is not a pandas Series.
+            ValueError: If weights do not sum to 1.
             ValueError: If weights do not include all asset tickers.
         """
+        if not isinstance(weights, pd.Series):
+            raise TypeError("weights must be a pandas Series.")
+        if not np.isclose(weights.sum(), 1.0):
+            raise ValueError("weights must sum to 1.")
         weights = weights.reindex(self.tickers)
         if weights.isna().any():
             raise ValueError("Weights must include all asset tickers.")
+        
         expected_return = np.dot(weights.values, self.expected_returns.values)
         variance = weights.values.T @ self.cov_matrix.values @ weights.values
-        variance = max(variance, 0)
+        variance = max(variance, 0.0)
         risk = np.sqrt(variance)
         
-        if risk == 0:
-            sharpe_ratio = 0
+        if np.isclose(risk, 0.0):
+            sharpe_ratio = np.nan
         else:
             sharpe_ratio = (expected_return - rf) / risk
         return pd.Series({
@@ -139,7 +173,16 @@ class Markowitz:
         
         Returns: 
             pd.DataFrame: A DataFrame containing the target returns and corresponding portfolio risks.
+
+        Raises:
+            ValueError: If n_portfolios is not a positive integer.
+            ValueError: If minimum_return is greater than maximum_return.
         """
+        if not isinstance(n_portfolios, int) or n_portfolios <= 0:
+            raise ValueError("n_portfolios must be a positive integer.")
+        if minimum_return > maximum_return:
+            raise ValueError("minimum_return must be less than or equal to maximum_return.")
+        
         target_returns = np.linspace(minimum_return, maximum_return, n_portfolios)
         risks = []
         for r in target_returns:
@@ -192,10 +235,10 @@ class Tobin(Markowitz):
     
     def tangency_portfolio(self) -> pd.Series:
         """
-        Calculate the tangency portfolio weights.
+        Calculate the tangency portfolio weights for the risky assets.
 
         Returns:
-            pd.Series: Tangency portfolio weights
+            pd.Series: Tangency portfolio weights for the risky assets.
 
         Raises:
             ValueError: If the tangency portfolio is degenerate for the given inputs (i.e., if the denominator in the weight calculation is close to zero).
@@ -204,38 +247,55 @@ class Tobin(Markowitz):
         e = self.ones
 
         numerator = self.inv_cov @ (mu - self.rf * e)
-        denominator = e.T @ numerator
+        denominator = float(e.T @ numerator)
         if np.isclose(denominator, 0.0):
             raise ValueError("Tangency portfolio is degenerate for the given inputs.")
 
         w = numerator / denominator
-        wf = 1 - np.sum(w)
-        return pd.Series(np.append(w, wf), index=self.tickers + ["Risk-Free Asset"])
+        return pd.Series(w, index=self.tickers)
     
     def portfolio_performance(self, weights: pd.Series) -> pd.Series:
         """
-        Calculate the expected return, risk and Sharpe ratio of a portfolio given its weights, including the risk-free asset.
+        Calculate the expected return, risk, and Sharpe ratio of a portfolio, allowing either:
+            - weights for risky assets only (risk-free weight assumed to be 0).
+            - weights including the risk-free asset. You should put "Risk-Free Asset" as the index for the risk-free weight.
 
         Args:
-            weights (pd.Series): The portfolio weights including the risk-free asset.
-        
+            weights (pd.Series): Portfolio weights. It may contain only risky assets
+                or risky assets plus "Risk-Free Asset".
+
         Returns:
-            pd.Series: A Series containing the expected return, risk and Sharpe ratio of the portfolio.
+            pd.Series: A Series containing the expected return, risk, and Sharpe ratio
+                of the portfolio.
 
         Raises:
-            ValueError: If weights do not include all asset tickers.
+            TypeError: If weights is not a pandas Series.
+            ValueError: If weights do not include all required risky asset tickers.
         """
-        weights = weights.reindex(self.tickers + ["Risk-Free Asset"])
-        if weights.isna().any():
-            raise ValueError("Weights must include all asset tickers and 'Risk-Free Asset'.")
-        w_risky = weights.iloc[:-1]
-        w_rf = weights.iloc[-1]
+        if not isinstance(weights, pd.Series):
+            raise TypeError("weights must be a pandas Series.")
+
+        if "Risk-Free Asset" in weights.index:
+            weights = weights.reindex(self.tickers + ["Risk-Free Asset"])
+            if weights.isna().any():
+                raise ValueError("Weights must include all asset tickers and 'Risk-Free Asset'.")
+            w_rf = float(weights["Risk-Free Asset"])
+            w_risky = weights[self.tickers]
+        else:
+            weights = weights.reindex(self.tickers)
+            if weights.isna().any():
+                raise ValueError("Weights must include all asset tickers.")
+            w_risky = weights
+            w_rf = 0.0
 
         expected_return = np.dot(w_risky.values, self.expected_returns.values) + w_rf * self.rf
         variance = w_risky.values.T @ self.cov_matrix.values @ w_risky.values
-        variance = max(variance, 0)
+        variance = max(variance, 0.0)
         risk = np.sqrt(variance)
-        sharpe_ratio = (expected_return - self.rf) / risk if risk > 0 else 0
+        if np.isclose(risk,0.0):
+            sharpe_ratio = np.nan
+        else:
+            sharpe_ratio = (expected_return - self.rf) / risk
         
         return pd.Series({
             "expected_return": expected_return,
@@ -249,32 +309,43 @@ class Tobin(Markowitz):
         including the risk-free asset.
 
         Args:
-            return_target (float): The target return for the portfolio. Must be in the same frequency as the expected returns (e.g., annualized if expected returns are annualized).
+            return_target (float): Target return for the portfolio. Must be in the
+                same frequency as expected returns.
 
         Returns:
-            pd.Series: Optimal portfolio weights including risk-free asset.
+            pd.Series: Optimal portfolio weights including the risk-free asset.
 
         Raises:
+            TypeError: If return_target is not numeric.
             ValueError: If the optimal portfolio is degenerate for the given inputs.
-            ValueError: If the optimal portfolio is degenerate because the tangency return equals the risk-free rate.
+            ValueError: If the tangency portfolio return equals the risk-free rate.
         """
+        if not isinstance(return_target, (int, float)):
+            raise TypeError("return_target must be a numeric value.")
+
         mu = self.expected_returns.values
         e = self.ones
 
         numerator = self.inv_cov @ (mu - self.rf * e)
-        denominator = e.T @ numerator
+        denominator = float(e.T @ numerator)
+
         if np.isclose(denominator, 0.0):
             raise ValueError("Optimal portfolio is degenerate for the given inputs.")
-        gamma_tau = numerator / denominator
 
-        mu_tau = mu @ gamma_tau
-        if np.isclose(mu_tau - self.rf, 0.0):
+        tangency_weights = numerator / denominator
+        tangency_return = float(mu @ tangency_weights)
+
+        if np.isclose(tangency_return - self.rf, 0.0):
             raise ValueError(
                 "Optimal portfolio is degenerate because tangency return equals the risk-free rate."
             )
-        gamma_z = (mu_tau - return_target) / (mu_tau - self.rf)
-        w = (1 - gamma_z) * gamma_tau
-        return pd.Series(np.append(w, gamma_z), index=self.tickers + ["Risk-Free Asset"])
+
+        weight_tangency = (return_target - self.rf) / (tangency_return - self.rf)
+        weight_rf = 1.0 - weight_tangency
+
+        w_risky = weight_tangency * tangency_weights
+
+        return pd.Series(np.append(w_risky, weight_rf),index=self.tickers + ["Risk-Free Asset"],)
     
     def cal(self, minimum_return: float, maximum_return: float, n_portfolios: int = 100) -> pd.DataFrame:
         """
@@ -287,7 +358,16 @@ class Tobin(Markowitz):
 
         Returns:
             pd.DataFrame: A DataFrame containing the target returns and corresponding portfolio risks on the CAL
+
+        Raises:
+            ValueError: If n_portfolios is not a positive integer.
+            ValueError: If minimum_return is greater than maximum_return.
         """
+        if not isinstance(n_portfolios, int) or n_portfolios <= 0:
+            raise ValueError("n_portfolios must be a positive integer.")
+        if minimum_return > maximum_return:
+            raise ValueError("minimum_return must be less than or equal to maximum_return.")
+        
         target_returns = np.linspace(minimum_return, maximum_return, n_portfolios)
         risks = []
         for r in target_returns:

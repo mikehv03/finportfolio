@@ -7,12 +7,14 @@ Functions:
 - estimate_beta: Estimate the beta of an asset given its returns and market returns.
 - capm_expected_return: Calculate the expected return of an asset using the CAPM formula.
 - security_market_line: Calculate the Security Market Line (SML) for a range of betas.
+- plot_security_market_line: Plot the Security Market Line along with asset expected returns.
 - gordon_model: Calculate the intrinsic value of a stock using the Gordon Growth Model.
 - apt_expected_return: Calculate the expected return of an asset using the Arbitrage Pricing Theory (APT).
 """
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def estimate_beta(asset_returns: pd.Series, market_returns: pd.Series) -> float:
@@ -105,6 +107,76 @@ def security_market_line(betas: np.ndarray | list | pd.Series, rf: float, market
 
     return pd.DataFrame({"beta": betas, "expected_return": expected_returns})
 
+def plot_security_market_line(betas: np.ndarray | list | pd.Series, rf: float, market_return: float, asset_returns: pd.Series = None, asset_betas: pd.Series = None) -> None:
+    """
+    Plot the Security Market Line (SML) and optionally overlay individual assets.
+
+    Args:
+        betas (array-like): Beta values used to construct the Security Market Line.
+        rf (float): Risk-free rate.
+        market_return (float): Expected market return.
+        asset_returns (pd.Series): Expected returns of individual assets to plot. Defaults to None.
+        asset_betas (pd.Series): Beta values of individual assets to plot. Defaults to None.
+
+    Returns:
+        None: Displays the Security Market Line plot.
+
+    Raises:
+        TypeError: If asset_returns or asset_betas is provided and is not a pandas Series.
+        ValueError: If only one of asset_returns or asset_betas is provided.
+        ValueError: If asset_returns or asset_betas is empty.
+        ValueError: If asset_returns and asset_betas have different lengths.
+        ValueError: If asset_returns and asset_betas have different indices.
+    """
+    if (asset_returns is None) != (asset_betas is None):
+        raise ValueError("asset_returns and asset_betas must be provided together.")
+
+    if asset_returns is not None and asset_betas is not None:
+        if not isinstance(asset_returns, pd.Series):
+            raise TypeError("asset_returns must be a pandas Series.")
+        if not isinstance(asset_betas, pd.Series):
+            raise TypeError("asset_betas must be a pandas Series.")
+        if asset_returns.empty:
+            raise ValueError("asset_returns cannot be empty.")
+        if asset_betas.empty:
+            raise ValueError("asset_betas cannot be empty.")
+        if len(asset_returns) != len(asset_betas):
+            raise ValueError("asset_returns and asset_betas must have the same length.")
+        if not asset_returns.index.equals(asset_betas.index):
+            raise ValueError("asset_returns and asset_betas must have the same index.")
+
+    sml_df = security_market_line(betas, rf, market_return)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(
+        sml_df["beta"],
+        sml_df["expected_return"],
+        label="Security Market Line",
+    )
+
+    if asset_returns is not None and asset_betas is not None:
+        plt.scatter(
+            asset_betas.values,
+            asset_returns.values,
+            label="Assets",
+            zorder=5,
+        )
+
+        for asset in asset_returns.index:
+            plt.annotate(
+                asset,
+                (asset_betas.loc[asset], asset_returns.loc[asset]),
+                xytext=(5, 5),
+                textcoords="offset points",
+            )
+
+    plt.xlim(left=0)
+    plt.xlabel("Beta")
+    plt.ylabel("Expected Return")
+    plt.title("Security Market Line")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 def gordon_model(D1: float, g: float, r: float) -> float:
     """

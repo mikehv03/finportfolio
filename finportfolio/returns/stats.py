@@ -52,7 +52,7 @@ def summary_stats(returns: pd.DataFrame, rf: float) -> pd.DataFrame:
 
     Args:
         returns (pd.DataFrame): DataFrame of asset returns with dates as index and assets as columns
-        rf (float): Risk-free rate for Sharpe ratio calculation
+        rf (float): Risk-free rate for Sharpe ratio calculation. It must be expressed at the same frequency as returns.
 
     Returns:
         pd.DataFrame: Summary statistics (mean, std, skewness, kurtosis, min, max, Sharpe ratio) for each asset

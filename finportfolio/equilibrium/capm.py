@@ -19,11 +19,12 @@ def estimate_beta(asset_returns: pd.Series, market_returns: pd.Series) -> float:
     """
     Estimate the beta of an asset using OLS regression.
     Beta is estimated as the slope coefficient in the OLS regression:
-        asset_returns = alpha + beta * market_returns + error
+        asset_returns = alpha + beta * (market_returns) + error
 
     Args:
         asset_returns (pd.Series): Series of returns for the asset.
         market_returns (pd.Series): Series of returns for the market.
+
 
     Returns:
         float: The beta of the asset.
@@ -118,12 +119,44 @@ def gordon_model(D1: float, g: float, r: float) -> float:
         float: The intrinsic value of the stock.
     
     Raises: 
+        ValueError: If the expected dividend (D1) is negative.
         ValueError: If the required rate of return is not greater than the growth rate.
     """
+    if D1 <= 0:
+        raise ValueError("Expected dividend (D1) must be strictly positive")
     if r <= g:
         raise ValueError("Required rate of return must be greater than growth rate.")
     
     return D1 / (r - g)
+
+
+def gordon_model_implied_return(P: float, D1: float, g: float) -> float:
+    """
+    Calculate the implied rate of return using the Gordon Growth Model.
+
+    The Gordon Growth Model implies:
+
+        P = D1 / (r - g)
+        -> r = (D1 / P) + g
+
+    Args:
+        P (float): Current price of the stock.
+        D1 (float): Expected dividend in the next period.
+        g (float): Constant growth rate of dividends.
+
+    Returns:
+        float: Implied rate of return.
+
+    Raises:
+        ValueError: If P is not greater than zero.
+        ValueError: If D1 is negative.
+    """
+    if P <= 0:
+        raise ValueError("Current price (P) must be greater than zero.")
+    if D1 <= 0:
+        raise ValueError("Expected dividend (D1) must be strictly positive")
+
+    return (D1 / P) + g
 
 
 def apt_expected_return(rf: float, factor_betas: pd.Series, factor_premia: pd.Series) -> float:
@@ -140,6 +173,7 @@ def apt_expected_return(rf: float, factor_betas: pd.Series, factor_premia: pd.Se
 
     Raises:
         TypeError: If factor_betas or factor_premia is not a pandas Series.
+        ValueError: If factor_betas or factor_premia is empty.
         ValueError: If factor_betas and factor_premia have different lengths.
         ValueError: If factor_betas and factor_premia have different indices.
     """
@@ -147,6 +181,10 @@ def apt_expected_return(rf: float, factor_betas: pd.Series, factor_premia: pd.Se
         raise TypeError("factor_betas must be a pandas Series.")
     if not isinstance(factor_premia, pd.Series):
         raise TypeError("factor_premia must be a pandas Series.")
+    if factor_betas.empty:
+        raise ValueError("factor_betas cannot be empty.")
+    if factor_premia.empty:
+        raise ValueError("factor_premia cannot be empty.")
     if len(factor_betas) != len(factor_premia):
         raise ValueError("factor_betas and factor_premia must have the same length.")
     if not factor_betas.index.equals(factor_premia.index):

@@ -1,0 +1,10 @@
+services:
+  finportfolio-example:
+    build: .
+    container_name: finportfolio-example
+    command: python scripts/example.py
+
+  finportfolio-tests:
+    build: .
+    container_name: finportfolio-tests
+    command: pytest tests/ -v

@@ -16,9 +16,11 @@ import warnings
 class Markowitz:
     """
     A class for performing Markowitz portfolio optimization, based on Markowitz (1952) Modern Portfolio Theory.
-    
+
+    This class implements mean-variance optimization, computing the minimum variance portfolio, efficient frontier, and optimal portfolios for a given target return.
+
     Args:
-        returns (pd.DataFrame): Asset returns with dates as index and tickers as columns.
+        returns (pd.DataFrame): Asset returns with dates as index and tickers as columns, expressed in a consistent frequency (e.g., daily or monthly).
         annualize (bool): Whether to annualize returns and covariance matrix. Defaults to False.
         periods_per_year (int): Number of periods per year for annualization. Defaults to 252.
 
@@ -28,15 +30,20 @@ class Markowitz:
         TypeError: If annualize is not a bool.
         ValueError: If periods_per_year is not a positive integer.
         ValueError: If the covariance matrix is not positive semi-definite.
-        Warnings: If the covariance matrix is ill-conditioned.
+        ValueError: If the covariance matrix is ill-conditioned.
         ValueError: If the covariance matrix is singular (not invertible).
 
     Example:
+        >>> from finportfolio.optimization.markowitz import Markowitz
+        >>> returns = pd.DataFrame({
+        ...     "A": [0.01, 0.02, -0.01, 0.015],
+        ...     "B": [0.005, 0.01, -0.002, 0.01]
+        ... })
         >>> m = Markowitz(returns, annualize=False, periods_per_year=1)
         >>> m.min_variance()
         >>> m.optimal_portfolio(return_target=0.1)
         >>> m.plot_frontier(minimum_return=0.05, maximum_return=0.15)
-    """
+        """
 
     def __init__(self, returns: pd.DataFrame, annualize: bool = False, periods_per_year: int = 252):
         if not isinstance(returns, pd.DataFrame):
@@ -215,20 +222,35 @@ class Tobin(Markowitz):
     """
     Portfolio optimization using Tobin's separation theorem.
 
-    Based on Tobin (1958) Liquidity Preference as Behavior Towards Risk.
-    Extends Markowitz by adding a risk-free asset.
+    Based on Tobin (1958) "Liquidity Preference as Behavior Towards Risk". Extends Markowitz by introducing a risk-free asset.
+
+    This class computes the tangency portfolio and the Capital Allocation Line (CAL), allowing investors to optimally combine a risky portfolio with a risk-free asset.
+    Under this model, all investors hold the same optimal risky portfolio and differ only in their allocation between the risky portfolio and the risk-free asset.
 
     Args:
-        returns (pd.DataFrame): Asset returns with dates as index and tickers as columns.
-        rf (float): The risk-free rate. Must be in the same frequency as the asset returns (e.g., annualized if asset returns are annualized).
+        returns (pd.DataFrame): Asset returns with dates as index and tickers as columns, expressed in a consistent frequency (e.g., daily or monthly).
+        rf (float): Risk-free rate expressed in the same frequency as the returns (e.g., daily if returns are daily, annual if returns are annualized).
         annualize (bool): Whether to annualize returns and covariance matrix. Defaults to False.
         periods_per_year (int): Number of periods per year for annualization. Defaults to 252.
 
+    Raises:
+        TypeError: If returns is not a pandas DataFrame.
+        TypeError: If rf is not numeric.
+        ValueError: If returns is empty.
+        ValueError: If the covariance matrix is singular or ill-conditioned.
+
     Example:
-        >>> t = Tobin(returns, rf=0.02, annualize=False, periods_per_year=1)
+        >>> import pandas as pd
+        >>> from finportfolio.optimization.tobin import Tobin
+        >>> returns = pd.DataFrame({
+        ...     "A": [0.01, 0.02, -0.01, 0.015],
+        ...     "B": [0.005, 0.01, -0.002, 0.01]
+        ... })
+        >>> t = Tobin(returns, rf=0.01, annualize=False, periods_per_year=1)
         >>> t.tangency_portfolio()
-        >>> t.plot_frontier(minimum_return=0.05, maximum_return=0.15)
+        >>> t.plot_frontier(minimum_return=0.0, maximum_return=0.02)
     """
+
     def __init__(self, returns: pd.DataFrame, rf: float, annualize: bool = False, periods_per_year: int = 252):
         super().__init__(returns, annualize, periods_per_year)
         self.rf = rf

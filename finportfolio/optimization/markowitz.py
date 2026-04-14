@@ -211,6 +211,7 @@ class Markowitz:
         plt.figure(figsize=(10, 6))
         plt.plot(frontier["risk"], frontier["target_return"], label="Efficient Frontier", color="blue")
         plt.ylim(bottom=0)
+        plt.xlim(left=0)
         plt.xlabel("Risk (Standard Deviation)")
         plt.ylabel("Expected Return")
         plt.title("Markowitz Efficient Frontier")
@@ -428,6 +429,7 @@ class Tobin(Markowitz):
         else:
             plt.title("Tobin's Capital Allocation Line")
         plt.ylim(bottom=0)
+        plt.xlim(left=0)
         plt.xlabel("Risk (Standard Deviation)")
         plt.ylabel("Expected Return")
         plt.legend()

@@ -11,7 +11,9 @@ Functions:
 
 import pandas as pd
 import yfinance as yf
-import pandas_datareader.data as web
+import io
+import zipfile
+import requests
 
 
 def get_prices(tickers: list[str], start_date: str, end_date: str, source: str = "yfinance") -> pd.DataFrame:
@@ -61,3 +63,45 @@ def get_prices(tickers: list[str], start_date: str, end_date: str, source: str =
     df = df.dropna(how="all")
 
     return df
+
+
+def get_ff_factors(start_date: str = None, end_date: str = None) -> pd.DataFrame:
+    """
+    Download Fama-French 3-Factor daily data from Kenneth French's data library.
+
+    Args:
+        start_date (str): Start date in 'YYYY-MM-DD' format. Defaults to None.
+        end_date (str): End date in 'YYYY-MM-DD' format. Defaults to None.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns ['Mkt-RF', 'SMB', 'HML', 'RF'],
+            returns expressed as decimals and DatetimeIndex.
+
+    Raises:
+        ValueError: If the data cannot be downloaded.
+    """
+
+    url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+    
+    try:
+        r = requests.get(url, timeout=30)
+        r.raise_for_status()
+    except Exception as e:
+        raise ValueError(f"Could not download Fama-French data: {e}")
+
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    with z.open(z.namelist()[0]) as f:
+        raw = pd.read_csv(f, skiprows=4, index_col=0)
+
+    raw = raw[raw.index.astype(str).str.len() == 8]
+    raw.index = pd.to_datetime(raw.index.astype(str))
+    raw = raw / 100
+    raw.columns = ["Mkt-RF", "SMB", "HML", "RF"]
+    raw.index.name = "Date"
+
+    if start_date:
+        raw = raw.loc[start_date:]
+    if end_date:
+        raw = raw.loc[:end_date]
+
+    return raw

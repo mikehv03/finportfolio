@@ -8,6 +8,21 @@ A Python library for portfolio optimization and asset pricing, designed to suppo
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
  
 ---
+
+## Why finportfolio?
+
+This library provides a unified and educational implementation of core concepts in modern portfolio theory and asset pricing.
+
+Unlike fragmented tools, **finportfolio** integrates in a single interface:
+
+- Portfolio optimization (Markowitz, Tobin)
+- Asset pricing models (CAPM, APT, Gordon)
+- Factor models (Fama-French)
+- Performance analytics (Sharpe, Alpha, VaR, CVaR)
+
+It is designed both for learning and practical investment analysis.
+
+---
  
 ## Tutorial
  
@@ -161,7 +176,52 @@ pip install -e ".[dev]"
 ```
  
 ---
- 
+
+## Docker
+
+You can run the library without installing dependencies locally using Docker.
+
+### Run with Docker
+
+**Build the image:**
+
+```bash
+docker build -t finportfolio .
+```
+
+**Run the example script:**
+
+```bash
+docker run --rm finportfolio python scripts/example.py
+```
+
+**Run the tests:**
+
+```bash
+docker run --rm finportfolio pytest tests/ -v
+```
+
+### Run with Docker Compose
+
+```bash
+git clone https://github.com/mikehv03/finportfolio.git
+cd finportfolio
+docker compose up --build
+```
+
+This will:
+- Build the Docker image with all dependencies
+- Run the **32 unit tests** with pytest
+- Run the **example script** demonstrating all modules
+
+To run them separately:
+
+```bash
+docker compose up finportfolio-tests    # tests only
+docker compose up finportfolio-example  # example only
+```
+---
+
 ## License
  
 MIT License — see [LICENSE](LICENSE) for details.

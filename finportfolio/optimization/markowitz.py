@@ -210,7 +210,6 @@ class Markowitz:
         frontier = self.frontier(minimum_return, maximum_return, n_portfolios)
         plt.figure(figsize=(10, 6))
         plt.plot(frontier["risk"], frontier["target_return"], label="Efficient Frontier", color="blue")
-        plt.ylim(bottom=0)
         plt.xlim(left=0)
         plt.xlabel("Risk (Standard Deviation)")
         plt.ylabel("Expected Return")
@@ -428,7 +427,6 @@ class Tobin(Markowitz):
             plt.title("Tobin's CAL with Markowitz Efficient Frontier")
         else:
             plt.title("Tobin's Capital Allocation Line")
-        plt.ylim(bottom=0)
         plt.xlim(left=0)
         plt.xlabel("Risk (Standard Deviation)")
         plt.ylabel("Expected Return")

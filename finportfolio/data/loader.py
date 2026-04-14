@@ -47,9 +47,12 @@ def get_prices(tickers: list[str], start_date: str, end_date: str, source: str =
         if data.empty:
             raise ValueError(f"Ticker '{ticker}' not found or no data available.")
         prices = data["Close"]
+        if isinstance(prices, pd.DataFrame):
+            prices = prices.iloc[:, 0]
+        prices.name = ticker
         if prices.dropna().empty:
             raise ValueError(f"No valid data for ticker '{ticker}'.")
-        series_list.append(prices.rename(ticker))
+        series_list.append(prices)
 
     df = pd.concat(series_list, axis=1).sort_index()
 

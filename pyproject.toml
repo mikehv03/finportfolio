@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finportfolio"
-version = "0.1.7"
+version = "0.1.8"
 description = "A portfolio theory and asset pricing library implementing Markowitz optimization, factor models, and risk metrics."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,7 +20,6 @@ dependencies = [
     "scipy>=1.10",
     "matplotlib>=3.7",
     "yfinance>=0.2",
-    "pandas_datareader>=0.10",
 ]
 
 keywords = [

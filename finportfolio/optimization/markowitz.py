@@ -34,7 +34,7 @@ class Markowitz:
         ValueError: If the covariance matrix is singular (not invertible).
 
     Example:
-        >>> from finportfolio.optimization.markowitz import Markowitz
+        >>> from finportfolio.optimization import Markowitz
         >>> returns = pd.DataFrame({
         ...     "A": [0.01, 0.02, -0.01, 0.015],
         ...     "B": [0.005, 0.01, -0.002, 0.01]
@@ -241,7 +241,7 @@ class Tobin(Markowitz):
 
     Example:
         >>> import pandas as pd
-        >>> from finportfolio.optimization.tobin import Tobin
+        >>> from finportfolio.optimization import Tobin
         >>> returns = pd.DataFrame({
         ...     "A": [0.01, 0.02, -0.01, 0.015],
         ...     "B": [0.005, 0.01, -0.002, 0.01]

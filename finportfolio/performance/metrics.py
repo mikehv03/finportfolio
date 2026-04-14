@@ -42,7 +42,7 @@ class RiskReport:
         ValueError: If returns_benchmark has zero variance (which would make beta calculation impossible).
 
     Example:
-        >>> from finportfolio.performance.metrics import RiskReport
+        >>> from finportfolio.performance import RiskReport
         >>> portfolio_returns = pd.Series([0.01, 0.02, -0.005, 0.015])
         >>> benchmark_returns = pd.Series([0.005, 0.01, -0.002, 0.01])
         >>> rf = 0.01

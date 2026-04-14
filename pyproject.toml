@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finportfolio"
+version = "0.1.0"
+description = "A portfolio theory and asset pricing library implementing Markowitz optimization, factor models, and risk metrics."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Miguel Herrera" }
+]
+
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "yfinance>=0.2",
+]
+
+keywords = [
+    "finance",
+    "portfolio",
+    "markowitz",
+    "asset-pricing",
+    "risk-management"
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "jupyter>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mikehv03/finportfolio"
+Repository = "https://github.com/mikehv03/finportfolio"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*", "notebooks*", "venv*"]

@@ -5,11 +5,13 @@ Utilities for loading market data from external sources.
 
 Functions:
 - get_prices: Load historical adjusted closing prices for a list of tickers.
+- get_ff_factors: Download Fama-French factor data from Kenneth French's data library.
 """
 
 
 import pandas as pd
 import yfinance as yf
+import pandas_datareader.data as web
 
 
 def get_prices(tickers: list[str], start_date: str, end_date: str, source: str = "yfinance") -> pd.DataFrame:
@@ -59,3 +61,30 @@ def get_prices(tickers: list[str], start_date: str, end_date: str, source: str =
     df = df.dropna(how="all")
 
     return df
+
+def get_ff_factors(dataset: str = "F-F_Research_Data_Factors_daily", start_date: str = None, end_date: str = None) -> pd.DataFrame:
+    """
+    Download Fama-French factor data from Kenneth French's data library.
+
+    Args:
+        dataset (str): Name of the Fama-French dataset. Defaults to daily factors.
+        start_date (str): Start date in 'YYYY-MM-DD' format. Defaults to None.
+        end_date (str): End date in 'YYYY-MM-DD' format. Defaults to None.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns ['Mkt-RF', 'SMB', 'HML', 'RF'],
+            returns expressed as decimals and DatetimeIndex.
+
+    Raises:
+        ValueError: If the dataset is not found.
+    """
+    try:
+        raw = web.DataReader(dataset, "famafrench", start=start_date, end=end_date)[0]
+    except Exception as e:
+        raise ValueError(f"Could not download dataset '{dataset}': {e}")
+
+    raw.index = pd.to_datetime(raw.index.astype(str))
+    raw = raw / 100
+    raw.index.name = "Date"
+
+    return raw
